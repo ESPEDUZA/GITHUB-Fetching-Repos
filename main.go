@@ -106,9 +106,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erreur lors de la création de l'archive ZIP: %v", err)
 	}
-	fmt.Println("Les dépôts ont été archivés avec succès dans", zipFileName)
 
-	fmt.Println("Tous les dépôts ont été clonés, mis à jour et archivés.")
+	fmt.Println("Tous les dépôts ont été clonés.")
+	fmt.Println("Les dépôts ont été archivés avec succès dans", zipFileName)
 
 	http.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
 		username := os.Getenv("GITHUB_USER")
