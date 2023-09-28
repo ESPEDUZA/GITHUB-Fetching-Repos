@@ -63,7 +63,16 @@ func main() {
 	}
 	wg.Wait()
 
-	fmt.Println("Tous les dépôts ont été clonés et écrits.")
+	zipFileName := "repos-archive.zip"
+
+	cmd := exec.Command("zip", "-r", zipFileName, destDir)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Erreur lors de la création de l'archive ZIP: %v", err)
+	}
+	fmt.Println("Les dépôts ont été archivés avec succès dans", zipFileName)
+
+	fmt.Println("Tous les dépôts ont été clonés, mis à jour et archivés.")
 
 }
 
