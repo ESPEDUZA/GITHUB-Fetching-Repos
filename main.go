@@ -34,18 +34,31 @@ func main() {
 		log.Fatal(err)
 	}
 
-	file, err := os.Create(filepath.Join(destDir, "repositories.csv"))
+	file, err := os.Create("repositories.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Erreur lors de la création du fichier CSV:", err)
 	}
+	defer file.Close()
 
+	// Créer un writer CSV
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
+	// Écrire l'en-tête du fichier CSV
 	err = writer.Write([]string{"Name", "Clone URL", "Description", "Last Updated"})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Erreur lors de l'écriture de l'en-tête du fichier CSV:", err)
 	}
+
+	// Écrire chaque dépôt dans le fichier CSV
+	for _, repo := range repos {
+		err = writeRepoToCSV(file, writer, repo)
+		if err != nil {
+			log.Println("Erreur lors de l'écriture du dépôt dans le fichier CSV:", err)
+		}
+	}
+
+	fmt.Println("Les informations des dépôts ont été écrites dans repositories.csv")
 
 	var wg sync.WaitGroup
 	for _, repo := range repos {
