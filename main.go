@@ -6,6 +6,7 @@ import (
 	"github.com/ESPEDUZA/CC-GO/pkg"
 	"github.com/joho/godotenv"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,7 @@ func main() {
 	}
 	wg.Wait()
 
-	zipFileName := "repos-archive.zip"
+	zipFileName := "repos-archives-" + os.Getenv("GITHUB_USER") + ".zip"
 
 	cmd := exec.Command("zip", "-r", zipFileName, destDir)
 	err = cmd.Run()
@@ -83,6 +84,17 @@ func main() {
 	fmt.Println("Les dépôts ont été archivés avec succès dans", zipFileName)
 
 	fmt.Println("Tous les dépôts ont été clonés, mis à jour et archivés.")
+
+	http.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
+		username := os.Getenv("GITHUB_USER")
+		filepath := "repos-archives-" + username + ".zip"
+		http.ServeFile(w, r, filepath)
+	})
+
+	// Démarrer le serveur HTTP
+	port := "8080"
+	log.Printf("Serveur démarré sur :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 
 }
 
