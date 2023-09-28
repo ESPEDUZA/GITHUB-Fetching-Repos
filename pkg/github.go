@@ -24,7 +24,10 @@ func FetchRepositories(user string, token string) ([]Repository, error) {
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", "token "+token)
+	if token != "" {
+		req.Header.Add("Authorization", "token "+token)
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

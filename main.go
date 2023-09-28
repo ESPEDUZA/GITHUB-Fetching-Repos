@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -51,13 +52,9 @@ func main() {
 		wg.Add(1)
 		go func(repo pkg.Repository) {
 			defer wg.Done()
-			err := writeRepoToCSV(file, writer, repo)
+			err := cloneRepo(repo, destDir, token)
 			if err != nil {
-				log.Println("Erreur lors de l'écriture du dépôt dans le CSV:", err)
-			}
-			err = cloneRepo(repo, destDir)
-			if err != nil {
-				log.Println("Erreur lors du clonage du dépôt:", err)
+				log.Println("Error cloning the repository:", err)
 			}
 		}(repo)
 	}
@@ -84,9 +81,15 @@ func writeRepoToCSV(file *os.File, writer *csv.Writer, repo pkg.Repository) erro
 	return nil
 }
 
-func cloneRepo(repo pkg.Repository, destDir string) error {
+func cloneRepo(repo pkg.Repository, destDir string, token string) error {
 	repoDir := filepath.Join(destDir, repo.Name)
-	cmd := exec.Command("git", "clone", repo.CloneURL, repoDir)
+
+	cloneURL := repo.CloneURL
+	if token != "" {
+		cloneURL = strings.Replace(cloneURL, "https://", fmt.Sprintf("https://%s:x-oauth-basic@", token), 1)
+	}
+
+	cmd := exec.Command("git", "clone", cloneURL, repoDir)
 	err := cmd.Run()
 	if err != nil {
 		return err
