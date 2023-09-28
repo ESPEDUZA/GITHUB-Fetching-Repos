@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
-	"os"
-
 	"github.com/ESPEDUZA/CC-GO/pkg"
 	"github.com/joho/godotenv"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
 )
 
 func main() {
@@ -24,41 +26,60 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = writeReposToCSV(repos)
+	destDir := fmt.Sprintf("repos-%s", user)
+
+	// Créer le répertoire s'il n'existe pas
+	err = os.MkdirAll(destDir, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
-}
 
-func writeReposToCSV(repos []pkg.Repository) error {
-	file, err := os.Create("repositories.csv")
+	file, err := os.Create(filepath.Join(destDir, "repositories.csv"))
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-
-		}
-	}(file)
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	// Écrire l'en-tête du fichier CSV
 	err = writer.Write([]string{"Name", "Clone URL", "Description", "Last Updated"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	for _, repo := range repos {
+		wg.Add(1)
+		go func(repo pkg.Repository) {
+			defer wg.Done()
+			err := writeRepoToCSV(file, writer, repo)
+			if err != nil {
+				log.Println("Erreur lors de l'écriture du dépôt dans le CSV:", err)
+			}
+			err = cloneRepo(repo, destDir)
+			if err != nil {
+				log.Println("Erreur lors du clonage du dépôt:", err)
+			}
+		}(repo)
+	}
+	wg.Wait()
+
+	fmt.Println("Tous les dépôts ont été clonés et écrits.")
+}
+
+func writeRepoToCSV(file *os.File, writer *csv.Writer, repo pkg.Repository) error {
+	err := writer.Write([]string{repo.Name, repo.CloneURL, repo.Description, repo.UpdatedAt})
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	// Écrire les informations de chaque dépôt dans le fichier CSV
-	for _, repo := range repos {
-		err = writer.Write([]string{repo.Name, repo.CloneURL, repo.Description, repo.UpdatedAt})
-		if err != nil {
-			return err
-		}
+func cloneRepo(repo pkg.Repository, destDir string) error {
+	cmd := exec.Command("git", "clone", repo.CloneURL, filepath.Join(destDir, repo.Name))
+	err := cmd.Run()
+	if err != nil {
+		return err
 	}
-
-	fmt.Println("Les informations des dépôts ont été écrites dans repositories.csv")
 	return nil
 }
