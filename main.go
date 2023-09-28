@@ -28,7 +28,6 @@ func main() {
 
 	destDir := fmt.Sprintf("repos-%s", user)
 
-	// Créer le répertoire s'il n'existe pas
 	err = os.MkdirAll(destDir, 0755)
 	if err != nil {
 		log.Fatal(err)
@@ -65,6 +64,7 @@ func main() {
 	wg.Wait()
 
 	fmt.Println("Tous les dépôts ont été clonés et écrits.")
+
 }
 
 func writeRepoToCSV(file *os.File, writer *csv.Writer, repo pkg.Repository) error {
@@ -76,10 +76,17 @@ func writeRepoToCSV(file *os.File, writer *csv.Writer, repo pkg.Repository) erro
 }
 
 func cloneRepo(repo pkg.Repository, destDir string) error {
-	cmd := exec.Command("git", "clone", repo.CloneURL, filepath.Join(destDir, repo.Name))
+	repoDir := filepath.Join(destDir, repo.Name)
+	cmd := exec.Command("git", "clone", repo.CloneURL, repoDir)
 	err := cmd.Run()
 	if err != nil {
 		return err
 	}
+
+	err = pkg.ExecuteGitCommands(repoDir)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
