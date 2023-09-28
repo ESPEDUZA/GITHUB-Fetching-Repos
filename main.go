@@ -61,18 +61,43 @@ func main() {
 
 	fmt.Println("Les informations des dépôts ont été écrites dans repositories.csv")
 
-	var wg sync.WaitGroup
+	const numWorkers = 10 // Nombre de goroutines s'exécutant simultanément
+
+	// Créer un canal pour les travaux
+	jobs := make(chan pkg.Repository, len(repos))
+
+	// Ajouter les travaux au canal
 	for _, repo := range repos {
-		wg.Add(1)
-		go func(repo pkg.Repository) {
-			defer wg.Done()
-			err := cloneRepo(repo, destDir, token)
-			if err != nil {
-				log.Println("Error cloning the repository:", err)
-			}
-		}(repo)
+		jobs <- repo
 	}
+	close(jobs) // Fermer le canal pour indiquer qu'il n'y a plus de travaux à ajouter
+
+	// Créer un canal pour les erreurs
+	errors := make(chan error, len(repos))
+
+	// Lancer les travailleurs
+	var wg sync.WaitGroup
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for repo := range jobs {
+				err := cloneRepo(repo, destDir, token)
+				if err != nil {
+					errors <- err
+				}
+			}
+		}()
+	}
+
+	// Attendre que tous les travailleurs aient terminé
 	wg.Wait()
+	close(errors) // Fermer le canal d'erreurs
+
+	// Traiter les erreurs
+	for err := range errors {
+		log.Println("Error cloning the repository:", err)
+	}
 
 	zipFileName := "repos-archives-" + os.Getenv("GITHUB_USER") + ".zip"
 
